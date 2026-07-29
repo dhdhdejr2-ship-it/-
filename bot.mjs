@@ -80229,28 +80229,32 @@ var utilityCommands = [
           ephemeral: true
         });
       }
-      const categories = [
-        {
-          name: "\u{1F6E1}\uFE0F Moderation",
-          cmds: "ban, unban, kick, timeout, untimeout, warn, warnings, clearwarnings, purge, slowmode, lock, unlock"
-        },
-        {
-          name: "\u2139\uFE0F Info",
-          cmds: "userinfo, serverinfo, avatar, roleinfo, botinfo, ping"
-        },
-        {
-          name: "\u{1F527} Utility",
-          cmds: "announce, embed, poll, addrole, removerole, nickname"
-        },
-        {
-          name: "\u{1F3B2} Fun",
-          cmds: "8ball, roll, coinflip"
-        }
-      ];
-      const embed = new import_discord3.EmbedBuilder().setColor(5793266).setTitle("\u{1F4CB} Command List").setDescription("Use `/help <command>` to get details on any command.").addFields(categories.map((c) => ({
-        name: c.name,
-        value: c.cmds.split(", ").map((cmd) => `\`/${cmd}\``).join(" ")
-      }))).setFooter({ text: `${interaction.client.application?.commands.cache.size ?? "\u2014"} commands total` });
+      const embed = new import_discord3.EmbedBuilder()
+        .setColor(2895667)
+        .setTitle("Command List")
+        .addFields(
+          {
+            name: "Moderation",
+            value: "`/ban`  `/unban`  `/kick`  `/timeout`  `/untimeout`\n`/warn`  `/warnings`  `/clearwarnings`  `/purge`  `/slowmode`  `/lock`  `/unlock`",
+            inline: false
+          },
+          {
+            name: "Info",
+            value: "`/userinfo`  `/serverinfo`  `/avatar`  `/roleinfo`  `/botinfo`  `/ping`",
+            inline: false
+          },
+          {
+            name: "Utility",
+            value: "`/announce`  `/embed`  `/poll`  `/addrole`  `/removerole`  `/nickname`",
+            inline: false
+          },
+          {
+            name: "Fun",
+            value: "`/8ball`  `/roll`  `/coinflip`",
+            inline: false
+          }
+        )
+        .setFooter({ text: "Use /help <command> for details on a specific command" });
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
   }
