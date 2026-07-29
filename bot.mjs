@@ -80347,12 +80347,116 @@ var funCommands = [
   }
 ];
 
+
+// ─── GIVEAWAY & TICKET & WELCOME/LEAVE COMMANDS ───────────────────────────
+var BANNER_926 = "https://raw.githubusercontent.com/dhdhdejr2-ship-it/-/main/926.png";
+var extraCommands = [
+  // GIVEAWAY
+  {
+    data: new import_discord5.SlashCommandBuilder()
+      .setName("giveaway")
+      .setDescription("Start a giveaway")
+      .setDefaultMemberPermissions(import_discord5.PermissionFlagsBits.ManageGuild)
+      .setDMPermission(false)
+      .addStringOption((o) => o.setName("prize").setDescription("What are you giving away?").setRequired(true))
+      .addIntegerOption((o) => o.setName("duration").setDescription("Duration in minutes").setRequired(true).setMinValue(1).setMaxValue(10080))
+      .addIntegerOption((o) => o.setName("winners").setDescription("Number of winners (default 1)").setMinValue(1).setMaxValue(20)),
+    async execute(interaction) {
+      const prize   = interaction.options.getString("prize");
+      const minutes = interaction.options.getInteger("duration");
+      const winners = interaction.options.getInteger("winners") ?? 1;
+      const endsAt  = Date.now() + minutes * 60 * 1000;
+      const embed = new import_discord5.EmbedBuilder()
+        .setColor(0x000000)
+        .setTitle("\uD83C\uDF89 GIVEAWAY")
+        .setDescription([
+          `**Prize:** ${prize}`,
+          `**Winners:** ${winners}`,
+          `**Ends:** <t:${Math.floor(endsAt / 1000)}:R>`,
+          "",
+          "React with \uD83C\uDF89 to enter!"
+        ].join("\n"))
+        .setImage(BANNER_926)
+        .setFooter({ text: `${winners} winner(s) \u2022 Ends` })
+        .setTimestamp(endsAt);
+      const msg = await interaction.channel.send({ embeds: [embed] });
+      await msg.react("\uD83C\uDF89");
+      await interaction.reply({ content: "\uD83C\uDF89 Giveaway started!", ephemeral: true });
+      setTimeout(async () => {
+        const freshMsg = await msg.fetch().catch(() => null);
+        if (!freshMsg) return;
+        const reaction = freshMsg.reactions.cache.get("\uD83C\uDF89");
+        const users    = reaction ? await reaction.users.fetch() : null;
+        const entries  = users ? users.filter((u) => !u.bot) : null;
+        if (!entries || entries.size === 0) {
+          const noWinEmbed = new import_discord5.EmbedBuilder()
+            .setColor(0x000000)
+            .setTitle("\uD83C\uDF89 GIVEAWAY ENDED")
+            .setDescription(`**Prize:** ${prize}\n\nNo valid entries — no winner.`)
+            .setImage(BANNER_926)
+            .setTimestamp();
+          await freshMsg.edit({ embeds: [noWinEmbed] });
+          return;
+        }
+        const picked = entries.random(Math.min(winners, entries.size));
+        const winnersList = Array.isArray(picked) ? picked : [picked];
+        const winnersText = winnersList.map((u) => `<@${u.id}>`).join(", ");
+        const endEmbed = new import_discord5.EmbedBuilder()
+          .setColor(0x000000)
+          .setTitle("\uD83C\uDF89 GIVEAWAY ENDED")
+          .setDescription(`**Prize:** ${prize}\n**Winner(s):** ${winnersText}`)
+          .setImage(BANNER_926)
+          .setTimestamp();
+        await freshMsg.edit({ embeds: [endEmbed] });
+        await freshMsg.channel.send({ content: `\uD83C\uDF89 Congrats ${winnersText}! You won **${prize}**!` });
+      }, minutes * 60 * 1000);
+    }
+  },
+  // TICKET PANEL
+  {
+    data: new import_discord5.SlashCommandBuilder()
+      .setName("ticketpanel")
+      .setDescription("Post the support ticket panel in this channel")
+      .setDefaultMemberPermissions(import_discord5.PermissionFlagsBits.ManageGuild)
+      .setDMPermission(false),
+    async execute(interaction) {
+      const embed = new import_discord5.EmbedBuilder()
+        .setColor(0x000000)
+        .setTitle("\uD83C\uDFAB Support Ticket")
+        .setDescription([
+          "Welcome to our support panel!",
+          "",
+          "\uD83D\uDD10 **Free Access**",
+          "Use this if you want to join and get access.",
+          "",
+          "\uD83E\uDD1D **Allies**",
+          "Use this if you want to ally with us.",
+          "",
+          "\uD83D\uDCCB **Support**",
+          "Use this for any questions or help.",
+          "",
+          "Click a button below to open a ticket."
+        ].join("\n"))
+        .setImage(BANNER_926)
+        .setFooter({ text: "Only you and staff can see your ticket" });
+      const row = new import_discord5.ActionRowBuilder().addComponents(
+        new import_discord5.ButtonBuilder().setCustomId("ticket_free_access").setLabel("Free Access").setEmoji("\uD83D\uDD10").setStyle(import_discord5.ButtonStyle.Primary),
+        new import_discord5.ButtonBuilder().setCustomId("ticket_allies").setLabel("Allies").setEmoji("\uD83E\uDD1D").setStyle(import_discord5.ButtonStyle.Success),
+        new import_discord5.ButtonBuilder().setCustomId("ticket_support").setLabel("Support").setEmoji("\uD83D\uDCCB").setStyle(import_discord5.ButtonStyle.Secondary)
+      );
+      await interaction.channel.send({ embeds: [embed], components: [row] });
+      await interaction.reply({ content: "\u2705 Ticket panel posted!", ephemeral: true });
+    }
+  }
+];
+
 // src/bot/index.ts
 var allCommands = [
   ...moderationCommands,
   ...infoCommands,
   ...utilityCommands,
-  ...funCommands
+  ...funCommands,
+  ...extraCommands
 ];
 async function startBot() {
   const token2 = process.env["DISCORD_BOT_TOKEN"];
@@ -80409,7 +80513,35 @@ async function startBot() {
       }
     }
   });
-  await client.login(token2);
+
+  // ─── WELCOME / LEAVE ──────────────────────────────────────────────────
+  client.on("guildMemberAdd", async (member) => {
+    const channelId = process.env["WELCOME_CHANNEL_ID"];
+    if (!channelId) return;
+    const channel = member.guild.channels.cache.get(channelId);
+    if (!channel || !channel.isTextBased()) return;
+    const embed = new import_discord5.EmbedBuilder()
+      .setColor(0x000000)
+      .setTitle("Welcome!")
+      .setDescription(`Welcome to **${member.guild.name}**, <@${member.id}>!\nYou are member **#${member.guild.memberCount}**.`)
+      .setImage(BANNER_926)
+      .setTimestamp();
+    await channel.send({ embeds: [embed] }).catch(() => null);
+  });
+  client.on("guildMemberRemove", async (member) => {
+    const channelId = process.env["LEAVE_CHANNEL_ID"];
+    if (!channelId) return;
+    const channel = member.guild.channels.cache.get(channelId);
+    if (!channel || !channel.isTextBased()) return;
+    const embed = new import_discord5.EmbedBuilder()
+      .setColor(0x000000)
+      .setTitle("Member Left")
+      .setDescription(`**${member.user.tag}** has left the server.`)
+      .setImage(BANNER_926)
+      .setTimestamp();
+    await channel.send({ embeds: [embed] }).catch(() => null);
+  });
+    await client.login(token2);
 }
 
 // src/bot-only.ts
